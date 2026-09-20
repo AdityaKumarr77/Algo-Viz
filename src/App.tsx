@@ -1,0 +1,23 @@
+import { useState } from "react";
+import { TopBar } from "./components/TopBar";
+import { Footer } from "./components/Footer";
+import { SortingView } from "./views/SortingView";
+import { SearchingView } from "./views/SearchingView";
+import { PathfindingView } from "./views/PathfindingView";
+import "./styles/global.css";
+
+export type Mode = "sorting" | "searching" | "pathfinding";
+
+export default function App() {
+  const [mode, setMode] = useState<Mode>("sorting");
+
+  return (
+    <>
+      <TopBar mode={mode} setMode={setMode} />
+      {mode === "sorting" && <SortingView />}
+      {mode === "searching" && <SearchingView />}
+      {mode === "pathfinding" && <PathfindingView />}
+      <Footer />
+    </>
+  );
+}
