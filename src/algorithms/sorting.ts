@@ -275,3 +275,38 @@ export const SORT_ALGOS = {
 } as const satisfies Record<string, AlgoMeta>;
 
 export type SortAlgoKey = keyof typeof SORT_ALGOS;
+
+export type ArrayDistribution = "random" | "nearly-sorted" | "reversed" | "few-unique" | "pyramid";
+
+export function generateArray(n: number, type: ArrayDistribution = "random"): number[] {
+  if (type === "reversed") {
+    return Array.from({ length: n }, (_, i) => Math.round(((n - i) / n) * 94) + 6);
+  }
+  if (type === "nearly-sorted") {
+    const arr = Array.from({ length: n }, (_, i) => Math.round(((i + 1) / n) * 94) + 6);
+    const swaps = Math.max(1, Math.floor(n * 0.08));
+    for (let k = 0; k < swaps; k++) {
+      const i1 = Math.floor(Math.random() * n);
+      const i2 = Math.floor(Math.random() * n);
+      [arr[i1], arr[i2]] = [arr[i2], arr[i1]];
+    }
+    return arr;
+  }
+  if (type === "few-unique") {
+    const step = [20, 40, 60, 80, 98];
+    return Array.from({ length: n }, () => step[Math.floor(Math.random() * step.length)]);
+  }
+  if (type === "pyramid") {
+    const half = Math.floor(n / 2);
+    const arr: number[] = [];
+    for (let i = 0; i < half; i++) {
+      arr.push(Math.round(((i + 1) / Math.max(half, 1)) * 90) + 10);
+    }
+    for (let i = half; i < n; i++) {
+      arr.push(Math.round(((n - i) / Math.max(n - half, 1)) * 90) + 10);
+    }
+    return arr;
+  }
+  return Array.from({ length: n }, () => Math.floor(Math.random() * 95) + 5);
+}
+

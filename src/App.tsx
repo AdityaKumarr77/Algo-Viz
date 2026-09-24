@@ -4,16 +4,18 @@ import { Footer } from "./components/Footer";
 import { SortingView } from "./views/SortingView";
 import { SearchingView } from "./views/SearchingView";
 import { PathfindingView } from "./views/PathfindingView";
+import { useTheme } from "./hooks/useTheme";
 import "./styles/global.css";
 
 export type Mode = "sorting" | "searching" | "pathfinding";
 
 export default function App() {
   const [mode, setMode] = useState<Mode>("sorting");
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <>
-      <TopBar mode={mode} setMode={setMode} />
+      <TopBar mode={mode} setMode={setMode} theme={theme} onToggleTheme={toggleTheme} />
       {mode === "sorting" && <SortingView />}
       {mode === "searching" && <SearchingView />}
       {mode === "pathfinding" && <PathfindingView />}

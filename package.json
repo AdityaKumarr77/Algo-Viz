@@ -4,7 +4,11 @@
   "version": "1.0.0",
   "type": "module",
   "description": "AlgoViz — an interactive sorting, searching and pathfinding algorithm visualizer.",
-  "author": "Aditya Kumar Jha",
+  "author": {
+    "name": "Aditya Kumar Jha",
+    "url": "https://github.com/AdityaKumarr77"
+  },
+  "homepage": "https://github.com/AdityaKumarr77",
   "license": "MIT",
   "scripts": {
     "dev": "vite",

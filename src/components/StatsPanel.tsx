@@ -1,29 +1,48 @@
 interface StatsPanelProps {
   label1: string;
-  value1: number;
+  value1: number | string;
   label2: string;
-  value2: number;
+  value2: number | string;
   steps: number;
+  status?: string;
+  isComplete?: boolean;
 }
 
-export function StatsPanel({ label1, value1, label2, value2, steps }: StatsPanelProps) {
+export function StatsPanel({
+  label1,
+  value1,
+  label2,
+  value2,
+  steps,
+  status = "Active",
+  isComplete = false,
+}: StatsPanelProps) {
   return (
-    <section className="panel-block stats-block">
-      <h2 className="block-label">Live stats</h2>
-      <dl className="stats-grid">
-        <div>
-          <dt>{label1}</dt>
-          <dd>{value1}</dd>
+    <section className="panel-block stats-card">
+      <div className="stats-header">
+        <div className="stats-title-wrap">
+          <span className={`stats-pulse-dot${isComplete ? " is-complete" : ""}`} aria-hidden="true" />
+          <h2 className="block-label-text">Live Telemetry</h2>
         </div>
-        <div>
-          <dt>{label2}</dt>
-          <dd>{value2}</dd>
+        <span className={`stats-status-pill${isComplete ? " is-complete" : ""}`}>
+          {isComplete ? "Complete" : status}
+        </span>
+      </div>
+
+      <div className="stats-grid-cards">
+        <div className="stat-card">
+          <span className="stat-label">{label1}</span>
+          <span className="stat-value primary">{value1}</span>
         </div>
-        <div>
-          <dt>Elapsed steps</dt>
-          <dd>{steps}</dd>
+        <div className="stat-card">
+          <span className="stat-label">{label2}</span>
+          <span className="stat-value secondary">{value2}</span>
         </div>
-      </dl>
+        <div className="stat-card full-width">
+          <span className="stat-label">Operations / Steps</span>
+          <span className="stat-value accent">{steps}</span>
+        </div>
+      </div>
     </section>
   );
 }

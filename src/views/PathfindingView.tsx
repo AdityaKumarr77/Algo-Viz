@@ -1,5 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { PATH_ALGOS, cellKey, type Cell, type Grid, type PathAlgoKey, type PathStep } from "../algorithms/pathfinding";
+import {
+  PATH_ALGOS,
+  cellKey,
+  type Cell,
+  type Grid,
+  type PathAlgoKey,
+  type PathStep,
+} from "../algorithms/pathfinding";
+import {
+  generateRandomWalls,
+  generateRecursiveDivisionMaze,
+  generateStairPattern,
+} from "../algorithms/mazes";
 import { useAlgorithmRunner, delayForSpeed } from "../hooks/useAlgorithmRunner";
 import { AlgoSelect } from "../components/AlgoSelect";
 import { Slider } from "../components/Slider";
@@ -7,18 +19,18 @@ import { RunControls } from "../components/RunControls";
 import { StatsPanel } from "../components/StatsPanel";
 import { Legend } from "../components/Legend";
 import { ComplexityPanel } from "../components/ComplexityPanel";
-import { Button } from "../components/Button";
+import { sound } from "../utils/audio";
 
-const DENSITY_LABELS = ["Coarse", "Medium", "Fine"];
+const DENSITY_LABELS = ["Coarse (Large)", "Medium (Standard)", "Fine (Dense)"];
 const DENSITY_PX = [34, 24, 16];
 
 const LEGEND_ITEMS: [string, string][] = [
-  ["var(--success)", "Start"],
-  ["var(--accent-2)", "End"],
-  ["var(--line-soft)", "Wall"],
-  ["var(--accent-dim)", "Visited"],
+  ["var(--success)", "Start Node"],
+  ["var(--accent-2)", "Target Node"],
+  ["var(--wall-color)", "Wall / Barrier"],
+  ["var(--visited-color)", "Visited Node"],
   ["var(--accent-3)", "Frontier"],
-  ["var(--accent)", "Path"],
+  ["var(--accent)", "Shortest Path"],
 ];
 
 type DragMode = "start" | "end" | "wall" | "erase" | null;
@@ -45,15 +57,18 @@ export function PathfindingView() {
   const [visited, setVisited] = useState<Set<string>>(new Set());
   const [frontier, setFrontier] = useState<Set<string>>(new Set());
   const [path, setPath] = useState<Set<string>>(new Set());
+  const [pathLength, setPathLength] = useState(0);
   const [stats, setStats] = useState({ visited: 0, frontierCount: 0, steps: 0 });
+  const [isCompleted, setIsCompleted] = useState(false);
+  const [notFound, setNotFound] = useState(false);
 
   const buildGrid = useCallback(() => {
     const el = stageRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
     const cellPx = DENSITY_PX[density - 1];
-    const nextCols = Math.max(8, Math.floor((rect.width - 20) / cellPx));
-    const nextRows = Math.max(6, Math.floor((rect.height - 20) / cellPx));
+    const nextCols = Math.max(10, Math.floor((rect.width - 24) / cellPx));
+    const nextRows = Math.max(8, Math.floor((rect.height - 24) / cellPx));
     setRows(nextRows);
     setCols(nextCols);
     setWalls(emptyWalls(nextRows, nextCols));
@@ -62,7 +77,10 @@ export function PathfindingView() {
     setVisited(new Set());
     setFrontier(new Set());
     setPath(new Set());
+    setPathLength(0);
     setStats({ visited: 0, frontierCount: 0, steps: 0 });
+    setIsCompleted(false);
+    setNotFound(false);
   }, [density]);
 
   useEffect(() => {
@@ -93,7 +111,19 @@ export function PathfindingView() {
   const handleStep = useCallback((s: PathStep) => {
     setVisited(new Set(s.visited ?? []));
     setFrontier(new Set(s.frontier ?? []));
-    if (s.path) setPath(new Set(s.path));
+    sound.playVisit();
+
+    if (s.path && s.path.length > 0) {
+      setPath(new Set(s.path));
+      setPathLength(s.path.length);
+      sound.playSuccess();
+    }
+    if (s.done) {
+      setIsCompleted(true);
+      if (s.notFound) {
+        setNotFound(true);
+      }
+    }
     setStats((prev) => ({
       visited: s.stats.visited,
       frontierCount: (s.frontier ?? []).length,
@@ -108,7 +138,10 @@ export function PathfindingView() {
     setVisited(new Set());
     setFrontier(new Set());
     setPath(new Set());
+    setPathLength(0);
     setStats({ visited: 0, frontierCount: 0, steps: 0 });
+    setIsCompleted(false);
+    setNotFound(false);
   }, [runner]);
 
   const handleAlgoChange = (key: string) => {
@@ -125,6 +158,7 @@ export function PathfindingView() {
   }, []);
 
   const handleCellDown = (r: number, c: number) => {
+    if (runner.playing) return;
     if (r === start[0] && c === start[1]) {
       dragRef.current = "start";
     } else if (r === end[0] && c === end[1]) {
@@ -138,7 +172,7 @@ export function PathfindingView() {
 
   const handleCellEnter = (r: number, c: number) => {
     const mode = dragRef.current;
-    if (!mode) return;
+    if (!mode || runner.playing) return;
     const isEndHere = r === end[0] && c === end[1];
     const isStartHere = r === start[0] && c === start[1];
     if (mode === "start" && walls[r][c] !== 1 && !isEndHere) {
@@ -150,8 +184,34 @@ export function PathfindingView() {
     }
   };
 
+  // Maze Generators
+  const applyRecursiveMaze = () => {
+    if (rows === 0 || cols === 0) return;
+    const nextWalls = generateRecursiveDivisionMaze(rows, cols, start, end);
+    setWalls(nextWalls);
+    resetVisual();
+  };
+
+  const applyRandomWalls = () => {
+    if (rows === 0 || cols === 0) return;
+    const nextWalls = generateRandomWalls(rows, cols, start, end, 0.28);
+    setWalls(nextWalls);
+    resetVisual();
+  };
+
+  const applyStairs = () => {
+    if (rows === 0 || cols === 0) return;
+    const nextWalls = generateStairPattern(rows, cols, start, end);
+    setWalls(nextWalls);
+    resetVisual();
+  };
+
   const clearWalls = () => {
     setWalls(emptyWalls(rows, cols));
+    resetVisual();
+  };
+
+  const clearPathOnly = () => {
     resetVisual();
   };
 
@@ -160,19 +220,25 @@ export function PathfindingView() {
     []
   );
 
+  const speedLabels = ["0.25x", "0.5x", "1.0x", "2.0x", "5.0x"];
+
   const cells = useMemo(() => {
-    const out: { r: number; c: number; classes: string }[] = [];
+    const out: { r: number; c: number; classes: string; isStart: boolean; isEnd: boolean }[] = [];
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const key = cellKey(r, c);
         const classes = ["grid-cell"];
-        if (r === start[0] && c === start[1]) classes.push("is-start");
-        else if (r === end[0] && c === end[1]) classes.push("is-end");
+        const isStart = r === start[0] && c === start[1];
+        const isEnd = r === end[0] && c === end[1];
+
+        if (isStart) classes.push("is-start");
+        else if (isEnd) classes.push("is-end");
         else if (walls[r]?.[c] === 1) classes.push("is-wall");
         else if (path.has(key)) classes.push("is-path");
         else if (visited.has(key)) classes.push("is-visited");
         else if (frontier.has(key)) classes.push("is-frontier");
-        out.push({ r, c, classes: classes.join(" ") });
+
+        out.push({ r, c, classes: classes.join(" "), isStart, isEnd });
       }
     }
     return out;
@@ -183,22 +249,58 @@ export function PathfindingView() {
       <main className="layout">
         <aside className="sidebar">
           <AlgoSelect value={algoKey} options={options} blurb={algo.blurb} onChange={handleAlgoChange} />
+
+          {/* Maze Generation Presets */}
+          <section className="panel-block maze-presets-block">
+            <h2 className="block-label">
+              <span>Maze & Terrain</span>
+              <span className="value-pill">Presets</span>
+            </h2>
+            <div className="preset-grid">
+              <button className="preset-btn" onClick={applyRecursiveMaze} title="Generate recursive division maze">
+                <span className="preset-icon">🌀</span>
+                <span className="preset-label">Recursive</span>
+              </button>
+              <button className="preset-btn" onClick={applyRandomWalls} title="Generate random obstacle walls">
+                <span className="preset-icon">🎲</span>
+                <span className="preset-label">Random</span>
+              </button>
+              <button className="preset-btn" onClick={applyStairs} title="Generate diagonal stair pattern">
+                <span className="preset-icon">🪜</span>
+                <span className="preset-label">Stairs</span>
+              </button>
+              <button className="preset-btn" onClick={clearWalls} title="Remove all walls">
+                <span className="preset-icon">🧹</span>
+                <span className="preset-label">Clear All</span>
+              </button>
+            </div>
+            <div className="preset-actions-row">
+              <button className="btn btn-ghost clear-path-btn" onClick={clearPathOnly}>
+                Clear Route
+              </button>
+            </div>
+          </section>
+
           <Slider
-            label="Grid density"
+            label="Grid Resolution"
             valueLabel={DENSITY_LABELS[density - 1]}
+            icon="📐"
             min={1}
             max={3}
             value={density}
             onChange={setDensity}
           />
+
           <Slider
-            label="Speed"
-            valueLabel={["Slowest", "Slow", "Normal", "Fast", "Fastest"][speed - 1]}
+            label="Execution Speed"
+            valueLabel={speedLabels[speed - 1]}
+            icon="⚡"
             min={1}
             max={5}
             value={speed}
             onChange={setSpeed}
           />
+
           <RunControls
             playing={runner.playing}
             disabled={runner.finished}
@@ -206,38 +308,72 @@ export function PathfindingView() {
             onStep={runner.stepOnce}
             onShuffle={buildGrid}
             onReset={resetVisual}
-            shuffleLabel="New grid"
+            shuffleLabel="New Grid"
           />
-          <section className="panel-block">
+
+          <section className="panel-block hint-box">
+            <div className="hint-header">
+              <span>💡</span>
+              <span className="hint-title">Interactive Canvas</span>
+            </div>
             <p className="hint-text">
-              Click and drag on the grid to draw walls. Drag the green and red nodes to move start and end.
+              Click & drag to draw or erase barriers. Drag 🚀 (Start) or 🎯 (Target) to reposition.
             </p>
-            <Button block onClick={clearWalls}>
-              Clear walls
-            </Button>
           </section>
+
           <StatsPanel
-            label1="Visited cells"
+            label1="Visited Nodes"
             value1={stats.visited}
-            label2="Frontier"
-            value2={stats.frontierCount}
+            label2="Shortest Path"
+            value2={pathLength > 0 ? `${pathLength} nodes` : stats.frontierCount}
             steps={stats.steps}
+            status={
+              isCompleted && pathLength > 0
+                ? "Path Found! 🎯"
+                : notFound
+                ? "No Path"
+                : runner.playing
+                ? "Exploring..."
+                : "Ready"
+            }
+            isComplete={isCompleted}
           />
         </aside>
 
         <section className="stage">
+          <div className="stage-header-bar">
+            <div className="stage-title-group">
+              <span className="stage-badge">Pathfinding Matrix</span>
+              <span className="stage-info-text">
+                {isCompleted && pathLength > 0
+                  ? `Shortest path discovered: ${pathLength} steps! 🎉`
+                  : notFound
+                  ? `Target unreachable: walls block all paths.`
+                  : runner.playing
+                  ? `Navigating from start to target using ${algo.label}...`
+                  : `Draw walls or choose a maze preset, then hit Execute`}
+              </span>
+            </div>
+          </div>
+
           <div className="stage-canvas mode-grid" ref={stageRef}>
             <div
               className="grid-wrap"
-              style={{ gridTemplateColumns: `repeat(${cols}, 1fr)`, gridTemplateRows: `repeat(${rows}, 1fr)` }}
+              style={{
+                gridTemplateColumns: `repeat(${cols}, 1fr)`,
+                gridTemplateRows: `repeat(${rows}, 1fr)`,
+              }}
             >
-              {cells.map(({ r, c, classes }) => (
+              {cells.map(({ r, c, classes, isStart, isEnd }) => (
                 <div
                   key={`${r}-${c}`}
                   className={classes}
                   onMouseDown={() => handleCellDown(r, c)}
                   onMouseEnter={() => handleCellEnter(r, c)}
-                />
+                >
+                  {isStart && <span className="cell-node-icon">🚀</span>}
+                  {isEnd && <span className="cell-node-icon">🎯</span>}
+                </div>
               ))}
             </div>
           </div>

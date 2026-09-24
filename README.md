@@ -88,4 +88,10 @@ pausing, and rendering.
 
 ---
 
-© 2026 Designed and developed by Aditya Kumar Jha
+### Author & Credits
+
+Designed and engineered with ❤️ by **[Aditya Kumar Jha](https://github.com/AdityaKumarr77)**  
+GitHub: [@AdityaKumarr77](https://github.com/AdityaKumarr77)
+
+© 2026 Aditya Kumar Jha. Released under the MIT License.
+
