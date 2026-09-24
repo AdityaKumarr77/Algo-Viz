@@ -1,10 +1,12 @@
+import type { ReactNode } from "react";
+
 interface SliderProps {
   label: string;
   valueLabel: string;
   min: number;
   max: number;
   value: number;
-  icon?: string;
+  icon?: ReactNode;
   onChange: (value: number) => void;
   onCommit?: (value: number) => void;
 }

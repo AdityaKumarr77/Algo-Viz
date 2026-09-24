@@ -1,5 +1,15 @@
 import { useCallback, useMemo, useState } from "react";
 import {
+  Dices,
+  TrendingUp,
+  TrendingDown,
+  Sparkles,
+  Pyramid,
+  SlidersHorizontal,
+  Zap,
+} from "lucide-react";
+import { toast } from "sonner";
+import {
   SORT_ALGOS,
   generateArray,
   type ArrayDistribution,
@@ -23,12 +33,12 @@ const LEGEND_ITEMS: [string, string][] = [
   ["var(--success)", "Sorted"],
 ];
 
-const DISTRIBUTIONS: { key: ArrayDistribution; label: string; icon: string }[] = [
-  { key: "random", label: "Random", icon: "🎲" },
-  { key: "nearly-sorted", label: "Nearly Sorted", icon: "📈" },
-  { key: "reversed", label: "Reversed", icon: "📉" },
-  { key: "few-unique", label: "Few Unique", icon: "✨" },
-  { key: "pyramid", label: "Pyramid", icon: "▲" },
+const DISTRIBUTIONS = [
+  { key: "random" as const, label: "Random", Icon: Dices },
+  { key: "nearly-sorted" as const, label: "Nearly Sorted", Icon: TrendingUp },
+  { key: "reversed" as const, label: "Reversed", Icon: TrendingDown },
+  { key: "few-unique" as const, label: "Few Unique", Icon: Sparkles },
+  { key: "pyramid" as const, label: "Pyramid", Icon: Pyramid },
 ];
 
 export function SortingView() {
@@ -67,9 +77,12 @@ export function SortingView() {
             setSweepIndex(i);
           }, i * Math.max(12, Math.floor(400 / len)));
         }
+        toast.success(`${algo.label} Complete!`, {
+          description: `Sorted ${s.array.length} items in ${s.stats.comparisons} comparisons and ${s.stats.swaps} swaps.`,
+        });
       }
     },
-    []
+    [algo.label]
   );
 
   const runner = useAlgorithmRunner<SortStep>(buildGenerator, handleStep, delayForSpeed(speed));
@@ -81,25 +94,35 @@ export function SortingView() {
     setSweepIndex(-1);
   }, [runner]);
 
+  const handleResetWithToast = () => {
+    resetVisual();
+    toast.info("Sorting reset");
+  };
+
   const handleAlgoChange = (key: string) => {
-    setAlgoKey(key as SortAlgoKey);
+    const nextKey = key as SortAlgoKey;
+    setAlgoKey(nextKey);
+    toast.info(`Switched to ${SORT_ALGOS[nextKey].label}`);
     resetVisual();
   };
 
   const handleDistributionChange = (dist: ArrayDistribution) => {
     setDistribution(dist);
     setData(generateArray(size, dist));
+    toast.info(`Distribution set to ${dist.replace("-", " ")}`);
     resetVisual();
   };
 
   const handleShuffle = () => {
     setData(generateArray(size, distribution));
+    toast.info("Array reshuffled");
     resetVisual();
   };
 
   const handleSizeCommit = (n: number) => {
     setSize(n);
     setData(generateArray(n, distribution));
+    toast.info(`Array size updated to ${n} bars`);
     resetVisual();
   };
 
@@ -125,6 +148,16 @@ export function SortingView() {
         <aside className="sidebar">
           <AlgoSelect value={algoKey} options={options} blurb={algo.blurb} onChange={handleAlgoChange} />
 
+          <RunControls
+            playing={runner.playing}
+            disabled={runner.finished}
+            onToggle={runner.toggle}
+            onStep={runner.stepOnce}
+            onShuffle={handleShuffle}
+            onReset={handleResetWithToast}
+            shuffleLabel="Reshuffle"
+          />
+
           {/* Distribution Preset Selector */}
           <section className="panel-block">
             <h2 className="block-label">
@@ -139,7 +172,9 @@ export function SortingView() {
                   onClick={() => handleDistributionChange(d.key)}
                   title={`Generate ${d.label} Array`}
                 >
-                  <span className="preset-icon">{d.icon}</span>
+                  <span className="preset-icon">
+                    <d.Icon size={14} />
+                  </span>
                   <span className="preset-label">{d.label}</span>
                 </button>
               ))}
@@ -149,7 +184,7 @@ export function SortingView() {
           <Slider
             label="Array Size"
             valueLabel={`${pendingSize} bars`}
-            icon="📏"
+            icon={<SlidersHorizontal size={14} />}
             min={8}
             max={100}
             value={pendingSize}
@@ -160,21 +195,11 @@ export function SortingView() {
           <Slider
             label="Execution Speed"
             valueLabel={speedLabels[speed - 1]}
-            icon="⚡"
+            icon={<Zap size={14} />}
             min={1}
             max={5}
             value={speed}
             onChange={setSpeed}
-          />
-
-          <RunControls
-            playing={runner.playing}
-            disabled={runner.finished}
-            onToggle={runner.toggle}
-            onStep={runner.stepOnce}
-            onShuffle={handleShuffle}
-            onReset={resetVisual}
-            shuffleLabel="Reshuffle"
           />
 
           <StatsPanel
@@ -231,10 +256,9 @@ export function SortingView() {
             })}
           </div>
           <Legend items={LEGEND_ITEMS} />
+          <ComplexityPanel time={algo.time} space={algo.space} pseudo={algo.pseudo} />
         </section>
       </main>
-
-      <ComplexityPanel time={algo.time} space={algo.space} pseudo={algo.pseudo} />
     </>
   );
 }

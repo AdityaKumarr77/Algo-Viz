@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { TrendingUp, Code2, Copy, Check } from "lucide-react";
+import { toast } from "sonner";
 
 interface ComplexityPanelProps {
   time: readonly [string, string, string];
@@ -28,6 +30,7 @@ export function ComplexityPanel({ time, space, pseudo }: ComplexityPanelProps) {
   const handleCopy = () => {
     navigator.clipboard?.writeText(pseudo);
     setCopied(true);
+    toast.success("Pseudocode copied to clipboard");
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -38,7 +41,9 @@ export function ComplexityPanel({ time, space, pseudo }: ComplexityPanelProps) {
       <div className="lp-col lp-complexity">
         <div className="lp-header">
           <div className="lp-title-wrap">
-            <span className="lp-icon">📈</span>
+            <span className="lp-icon">
+              <TrendingUp size={16} />
+            </span>
             <h3 className="lp-title">Asymptotic Complexity</h3>
           </div>
           <span className="lp-subtitle">Big-O Bounds</span>
@@ -57,7 +62,9 @@ export function ComplexityPanel({ time, space, pseudo }: ComplexityPanelProps) {
       <div className="lp-col lp-pseudocode">
         <div className="lp-header">
           <div className="lp-title-wrap">
-            <span className="lp-icon">💻</span>
+            <span className="lp-icon">
+              <Code2 size={16} />
+            </span>
             <h3 className="lp-title">Algorithm Logic & Pseudocode</h3>
           </div>
           <button
@@ -68,17 +75,12 @@ export function ComplexityPanel({ time, space, pseudo }: ComplexityPanelProps) {
           >
             {copied ? (
               <>
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
+                <Check size={13} />
                 <span>Copied!</span>
               </>
             ) : (
               <>
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                </svg>
+                <Copy size={13} />
                 <span>Copy</span>
               </>
             )}

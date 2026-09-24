@@ -1,5 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Navigation,
+  Target,
+  Grid3X3,
+  Dices,
+  Footprints,
+  Trash2,
+  Eraser,
+  Grid as GridIcon,
+  Zap,
+  Lightbulb,
+} from "lucide-react";
+import { toast } from "sonner";
+import {
   PATH_ALGOS,
   cellKey,
   type Cell,
@@ -117,11 +130,17 @@ export function PathfindingView() {
       setPath(new Set(s.path));
       setPathLength(s.path.length);
       sound.playSuccess();
+      toast.success("Path Found!", {
+        description: `Discovered route of ${s.path.length} steps (${s.stats.visited} nodes evaluated).`,
+      });
     }
     if (s.done) {
       setIsCompleted(true);
       if (s.notFound) {
         setNotFound(true);
+        toast.error("No Path Possible", {
+          description: "Target is completely blocked by walls.",
+        });
       }
     }
     setStats((prev) => ({
@@ -144,8 +163,15 @@ export function PathfindingView() {
     setNotFound(false);
   }, [runner]);
 
+  const handleResetWithToast = () => {
+    resetVisual();
+    toast.info("Pathfinding reset");
+  };
+
   const handleAlgoChange = (key: string) => {
-    setAlgoKey(key as PathAlgoKey);
+    const nextKey = key as PathAlgoKey;
+    setAlgoKey(nextKey);
+    toast.info(`Switched to ${PATH_ALGOS[nextKey].label}`);
     resetVisual();
   };
 
@@ -189,6 +215,7 @@ export function PathfindingView() {
     if (rows === 0 || cols === 0) return;
     const nextWalls = generateRecursiveDivisionMaze(rows, cols, start, end);
     setWalls(nextWalls);
+    toast.info("Generated Recursive Division maze");
     resetVisual();
   };
 
@@ -196,6 +223,7 @@ export function PathfindingView() {
     if (rows === 0 || cols === 0) return;
     const nextWalls = generateRandomWalls(rows, cols, start, end, 0.28);
     setWalls(nextWalls);
+    toast.info("Generated Random Obstacle maze");
     resetVisual();
   };
 
@@ -203,16 +231,29 @@ export function PathfindingView() {
     if (rows === 0 || cols === 0) return;
     const nextWalls = generateStairPattern(rows, cols, start, end);
     setWalls(nextWalls);
+    toast.info("Generated Staircase pattern");
     resetVisual();
   };
 
   const clearWalls = () => {
     setWalls(emptyWalls(rows, cols));
+    toast.info("Cleared all obstacle walls");
     resetVisual();
   };
 
   const clearPathOnly = () => {
     resetVisual();
+    toast.info("Cleared path route");
+  };
+
+  const handleGridReset = () => {
+    buildGrid();
+    toast.info("New grid layout initialized");
+  };
+
+  const handleDensityChange = (val: number) => {
+    setDensity(val);
+    toast.info(`Grid resolution: ${DENSITY_LABELS[val - 1]}`);
   };
 
   const options = useMemo(
@@ -250,6 +291,16 @@ export function PathfindingView() {
         <aside className="sidebar">
           <AlgoSelect value={algoKey} options={options} blurb={algo.blurb} onChange={handleAlgoChange} />
 
+          <RunControls
+            playing={runner.playing}
+            disabled={runner.finished}
+            onToggle={runner.toggle}
+            onStep={runner.stepOnce}
+            onShuffle={handleGridReset}
+            onReset={handleResetWithToast}
+            shuffleLabel="New Grid"
+          />
+
           {/* Maze Generation Presets */}
           <section className="panel-block maze-presets-block">
             <h2 className="block-label">
@@ -258,25 +309,34 @@ export function PathfindingView() {
             </h2>
             <div className="preset-grid">
               <button className="preset-btn" onClick={applyRecursiveMaze} title="Generate recursive division maze">
-                <span className="preset-icon">🌀</span>
+                <span className="preset-icon">
+                  <Grid3X3 size={14} />
+                </span>
                 <span className="preset-label">Recursive</span>
               </button>
               <button className="preset-btn" onClick={applyRandomWalls} title="Generate random obstacle walls">
-                <span className="preset-icon">🎲</span>
+                <span className="preset-icon">
+                  <Dices size={14} />
+                </span>
                 <span className="preset-label">Random</span>
               </button>
               <button className="preset-btn" onClick={applyStairs} title="Generate diagonal stair pattern">
-                <span className="preset-icon">🪜</span>
+                <span className="preset-icon">
+                  <Footprints size={14} />
+                </span>
                 <span className="preset-label">Stairs</span>
               </button>
               <button className="preset-btn" onClick={clearWalls} title="Remove all walls">
-                <span className="preset-icon">🧹</span>
+                <span className="preset-icon">
+                  <Trash2 size={14} />
+                </span>
                 <span className="preset-label">Clear All</span>
               </button>
             </div>
             <div className="preset-actions-row">
-              <button className="btn btn-ghost clear-path-btn" onClick={clearPathOnly}>
-                Clear Route
+              <button className="btn btn-ghost clear-path-btn" onClick={clearPathOnly} title="Clear visited and path markers">
+                <Eraser size={13} />
+                <span>Clear Route</span>
               </button>
             </div>
           </section>
@@ -284,40 +344,32 @@ export function PathfindingView() {
           <Slider
             label="Grid Resolution"
             valueLabel={DENSITY_LABELS[density - 1]}
-            icon="📐"
+            icon={<GridIcon size={14} />}
             min={1}
             max={3}
             value={density}
-            onChange={setDensity}
+            onChange={handleDensityChange}
           />
 
           <Slider
             label="Execution Speed"
             valueLabel={speedLabels[speed - 1]}
-            icon="⚡"
+            icon={<Zap size={14} />}
             min={1}
             max={5}
             value={speed}
             onChange={setSpeed}
           />
 
-          <RunControls
-            playing={runner.playing}
-            disabled={runner.finished}
-            onToggle={runner.toggle}
-            onStep={runner.stepOnce}
-            onShuffle={buildGrid}
-            onReset={resetVisual}
-            shuffleLabel="New Grid"
-          />
-
           <section className="panel-block hint-box">
             <div className="hint-header">
-              <span>💡</span>
+              <span className="hint-icon">
+                <Lightbulb size={15} />
+              </span>
               <span className="hint-title">Interactive Canvas</span>
             </div>
             <p className="hint-text">
-              Click & drag to draw or erase barriers. Drag 🚀 (Start) or 🎯 (Target) to reposition.
+              Click & drag to draw or erase barriers. Drag Start or Target to reposition.
             </p>
           </section>
 
@@ -329,7 +381,7 @@ export function PathfindingView() {
             steps={stats.steps}
             status={
               isCompleted && pathLength > 0
-                ? "Path Found! 🎯"
+                ? "Path Found!"
                 : notFound
                 ? "No Path"
                 : runner.playing
@@ -346,7 +398,7 @@ export function PathfindingView() {
               <span className="stage-badge">Pathfinding Matrix</span>
               <span className="stage-info-text">
                 {isCompleted && pathLength > 0
-                  ? `Shortest path discovered: ${pathLength} steps! 🎉`
+                  ? `Shortest path discovered: ${pathLength} steps!`
                   : notFound
                   ? `Target unreachable: walls block all paths.`
                   : runner.playing
@@ -371,17 +423,24 @@ export function PathfindingView() {
                   onMouseDown={() => handleCellDown(r, c)}
                   onMouseEnter={() => handleCellEnter(r, c)}
                 >
-                  {isStart && <span className="cell-node-icon">🚀</span>}
-                  {isEnd && <span className="cell-node-icon">🎯</span>}
+                  {isStart && (
+                    <span className="cell-node-icon" title="Start Node">
+                      <Navigation size={13} fill="currentColor" />
+                    </span>
+                  )}
+                  {isEnd && (
+                    <span className="cell-node-icon" title="Target Node">
+                      <Target size={13} />
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
           </div>
           <Legend items={LEGEND_ITEMS} />
+          <ComplexityPanel time={algo.time} space={algo.space} pseudo={algo.pseudo} />
         </section>
       </main>
-
-      <ComplexityPanel time={algo.time} space={algo.space} pseudo={algo.pseudo} />
     </>
   );
 }

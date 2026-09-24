@@ -3,12 +3,16 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "AlgoViz — an interactive sorting, searching and pathfinding algorithm visualizer.",
+  "description": "AlgoViz Studio — High-performance interactive visualizer for sorting, searching, and pathfinding algorithms with real-time telemetry, Web Audio synthesis, and asymptotic complexity analysis.",
   "author": {
     "name": "Aditya Kumar Jha",
     "url": "https://github.com/AdityaKumarr77"
   },
-  "homepage": "https://github.com/AdityaKumarr77",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AdityaKumarr77/Algo-Viz.git"
+  },
+  "homepage": "https://github.com/AdityaKumarr77/Algo-Viz",
   "license": "MIT",
   "scripts": {
     "dev": "vite",
@@ -17,8 +21,10 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "lucide-react": "^1.48.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "sonner": "^2.0.8"
   },
   "devDependencies": {
     "@types/react": "^18.3.5",

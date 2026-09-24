@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Toaster } from "sonner";
 import { TopBar } from "./components/TopBar";
 import { Footer } from "./components/Footer";
 import { SortingView } from "./views/SortingView";
@@ -15,6 +16,7 @@ export default function App() {
 
   return (
     <>
+      <Toaster position="bottom-right" richColors theme={theme} closeButton />
       <TopBar mode={mode} setMode={setMode} theme={theme} onToggleTheme={toggleTheme} />
       {mode === "sorting" && <SortingView />}
       {mode === "searching" && <SearchingView />}

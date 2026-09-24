@@ -1,4 +1,12 @@
 import { useCallback, useMemo, useState } from "react";
+import {
+  Dices,
+  SlidersHorizontal,
+  Zap,
+  CheckCircle2,
+  AlertCircle,
+} from "lucide-react";
+import { toast } from "sonner";
 import { SEARCH_ALGOS, type SearchAlgoKey, type SearchStep } from "../algorithms/searching";
 import { useAlgorithmRunner, delayForSpeed } from "../hooks/useAlgorithmRunner";
 import { AlgoSelect } from "../components/AlgoSelect";
@@ -46,9 +54,17 @@ export function SearchingView() {
       }
       if (s.found !== undefined && s.found >= 0) {
         sound.playTargetFound();
+        toast.success("Target Found!", {
+          description: `Discovered value ${target} at index ${s.found} after ${s.stats.comparisons} comparisons.`,
+        });
+      } else if (s.notFound) {
+        sound.playCompare(20, 300);
+        toast.error("Target Not Found", {
+          description: `Value ${target} does not exist in array after ${s.stats.comparisons} comparisons.`,
+        });
       }
     },
-    [data]
+    [data, target]
   );
 
   const runner = useAlgorithmRunner<SearchStep>(buildGenerator, handleStep, delayForSpeed(speed));
@@ -58,6 +74,11 @@ export function SearchingView() {
     setStep(null);
     setStepsCount(0);
   }, [runner]);
+
+  const handleResetWithToast = () => {
+    resetVisual();
+    toast.info("Search reset");
+  };
 
   const regenerate = useCallback(
     (n: number, algoForData: SearchAlgoKey, newTarget?: number) => {
@@ -74,20 +95,26 @@ export function SearchingView() {
   const handleAlgoChange = (key: string) => {
     const nextKey = key as SearchAlgoKey;
     setAlgoKey(nextKey);
+    toast.info(`Switched to ${SEARCH_ALGOS[nextKey].label}`);
     regenerate(size, nextKey);
   };
 
-  const handleShuffle = () => regenerate(size, algoKey);
+  const handleShuffle = () => {
+    regenerate(size, algoKey);
+    toast.info("Array regenerated");
+  };
 
   const handleSizeCommit = (n: number) => {
     setSize(n);
     regenerate(n, algoKey);
+    toast.info(`Array size updated to ${n} items`);
   };
 
   const handleSelectTargetFromCell = (val: number) => {
     if (runner.playing) return;
     setTarget(val);
     setCustomInput(String(val));
+    toast.info(`Target set to ${val}`);
     resetVisual();
   };
 
@@ -96,6 +123,7 @@ export function SearchingView() {
     const parsed = parseInt(customInput, 10);
     if (!isNaN(parsed)) {
       setTarget(parsed);
+      toast.info(`Target set to ${parsed}`);
       resetVisual();
     }
   };
@@ -104,6 +132,7 @@ export function SearchingView() {
     const chosen = data[Math.floor(Math.random() * data.length)];
     setTarget(chosen);
     setCustomInput(String(chosen));
+    toast.info(`Random target chosen: ${chosen}`);
     resetVisual();
   };
 
@@ -126,6 +155,16 @@ export function SearchingView() {
       <main className="layout">
         <aside className="sidebar">
           <AlgoSelect value={algoKey} options={options} blurb={algo.blurb} onChange={handleAlgoChange} />
+
+          <RunControls
+            playing={runner.playing}
+            disabled={runner.finished}
+            onToggle={runner.toggle}
+            onStep={runner.stepOnce}
+            onShuffle={handleShuffle}
+            onReset={handleResetWithToast}
+            shuffleLabel="Regenerate"
+          />
 
           {/* Interactive Target Setter */}
           <section className="panel-block target-picker-block">
@@ -151,8 +190,9 @@ export function SearchingView() {
                 onClick={pickRandomTarget}
                 title="Pick random element from array"
                 disabled={runner.playing}
+                aria-label="Pick random element"
               >
-                🎲
+                <Dices size={14} />
               </button>
             </form>
             <p className="hint-text">Tip: Click on any card below to set it as target.</p>
@@ -161,7 +201,7 @@ export function SearchingView() {
           <Slider
             label="Array Size"
             valueLabel={`${pendingSize} items`}
-            icon="📏"
+            icon={<SlidersHorizontal size={14} />}
             min={6}
             max={50}
             value={pendingSize}
@@ -172,21 +212,11 @@ export function SearchingView() {
           <Slider
             label="Execution Speed"
             valueLabel={speedLabels[speed - 1]}
-            icon="⚡"
+            icon={<Zap size={14} />}
             min={1}
             max={5}
             value={speed}
             onChange={setSpeed}
-          />
-
-          <RunControls
-            playing={runner.playing}
-            disabled={runner.finished}
-            onToggle={runner.toggle}
-            onStep={runner.stepOnce}
-            onShuffle={handleShuffle}
-            onReset={resetVisual}
-            shuffleLabel="Regenerate"
           />
 
           <StatsPanel
@@ -199,10 +229,10 @@ export function SearchingView() {
               found >= 0
                 ? "Target Found!"
                 : notFound
-                ? "Not Found"
-                : runner.playing
-                ? "Searching..."
-                : "Ready"
+                  ? "Not Found"
+                  : runner.playing
+                    ? "Searching..."
+                    : "Ready"
             }
             isComplete={isFinished}
           />
@@ -215,9 +245,19 @@ export function SearchingView() {
               <span className="stage-info-text">
                 Target: <strong className="target-highlight">{target}</strong>
                 {found >= 0 && (
-                  <span className="found-tag"> — Found at index {found}! 🎉</span>
+                  <span className="found-tag">
+                    {" "}
+                    — <CheckCircle2 size={13} style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 4 }} />
+                    Found at index {found}!
+                  </span>
                 )}
-                {notFound && <span className="notfound-tag"> — Value not present in array.</span>}
+                {notFound && (
+                  <span className="notfound-tag">
+                    {" "}
+                    — <AlertCircle size={13} style={{ display: "inline-block", verticalAlign: "-2px", marginRight: 4 }} />
+                    Value not present in array.
+                  </span>
+                )}
               </span>
             </div>
           </div>
@@ -261,10 +301,9 @@ export function SearchingView() {
             </div>
           </div>
           <Legend items={LEGEND_ITEMS} />
+          <ComplexityPanel time={algo.time} space={algo.space} pseudo={algo.pseudo} />
         </section>
       </main>
-
-      <ComplexityPanel time={algo.time} space={algo.space} pseudo={algo.pseudo} />
     </>
   );
 }
